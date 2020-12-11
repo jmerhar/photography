@@ -12,7 +12,8 @@ had no feature to do that. So I decided to write a script for it. I ended up fre
 
 ### Usage
 
-Make sure you have [perl](https://www.perl.org/) installed.
+Make sure you have [perl](https://www.perl.org/get.html) installed. If you're on Mac or Linux, you should
+already have it. You may need to install it on Windows.
 
 Download the script and make it executable. Run it with the path to your photos. You'll be prompted to provide
 a list of extensions for your sidecars and for your raw photos. Press enter to accept the defaults or provide a
