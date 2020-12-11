@@ -16,7 +16,7 @@ has no feature to do that. So I decided to write a script for it. I ended up fre
 # After downloading, make the script executable
 $ chmod a+x remove-sidecars.pl
 
-# Run with the path to your photos
+# Run it with the path to your photos
 $ ./remove-sidecars.pl /path/to/my/photos
 Please specify a list of sidecar extensions [JPG jpg JPEG jpeg] JPG jpg
 Please specify a list of raw photo extensions [RW2 CR2 DNG dng] RW2 DNG
