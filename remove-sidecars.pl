@@ -2,10 +2,9 @@
 
 use strict;
 use warnings;
-use 5.16.0;
-use Data::Dumper qw(Dumper);
 
 my $files_to_delete = {};
+my @units = qw( B KB MB GB TB PB );
 my @jpegs;
 my @raws;
 
@@ -99,7 +98,7 @@ sub delete_files {
             printf "Deleting %s (%s), a sidecar of %s\n", $file, format_size($size), $ext;
             $total_size += $size;
             $ext_size->{$ext} += $size;
-            # unlink $file;
+            unlink $file;
         }
     }
     print_report($total_size, $ext_size);
@@ -121,15 +120,13 @@ sub format_size {
     my $size = shift;
     my $exp = 0;
 
-    state $units = [qw(B KB MB GB TB PB)];
-
-    for (@$units) {
+    for (@units) {
         last if $size < 1024;
         $size /= 1024;
         $exp++;
     }
 
-    return sprintf("%.2f %s", $size, $units->[$exp]);
+    return sprintf("%.2f %s", $size, $units[$exp]);
 }
 
 define_extensions;
