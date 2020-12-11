@@ -3,19 +3,19 @@
 ## remove-sidecars.pl
 
 I like to shoot with my camera in RAW+JPEG mode, in order to have high-quality raw photos, but also jpegs
-for quick preview and for example to quickly send to my phone. Lightroom is also smart enough to recognise
+for quick preview and to quickly send to my phone for example. Lightroom is smart enough to recognise
 these jpegs as sidecars for the main raw photos, which means that they don't bother me much.
 
-All is good then, but when my catalogue reached 100k+ photos, I realised that these sidecars were taking
+All is good then, but when my catalogue reached 100k+ photos, I realised that these sidecars were taking up
 a lot of space on my hard drive, for no added benefit. When I tried to delete them I realised that Lightroom
-has no feature to do that. So I decided to write a script for it. I ended up freeing 300+ GB.
+had no feature to do that. So I decided to write a script for it. I ended up freeing 300+ GB of disk space.
 
 ### Usage
 
 Download the script and make it executable. Run it with the path to your photos. You'll be prompted to provide
-a list of extensions for your sidecars and your raw photos. Press enter to accept the defaults or provide a
-list of extensions separated by space. The script will then scan your photos, give a summary of the files it
-found, and prompt you to confirm deleting them. At the end you'll get a summary with the total disk space
+a list of extensions for your sidecars and for your raw photos. Press enter to accept the defaults or provide a
+space-separated list of extensions. The script will then scan your photos, give a summary of the files it found,
+and ask you to confirm that you want to delete them. At the end you'll get a summary with the total disk space
 recovered.
 
 ```
@@ -43,5 +43,6 @@ Deleting /path/to/my/photos/2/IMG_171956.jpg (4.33 MB), a sidecar of DNG
 
 In total 22.37 MB of disk space was recovered:
 - 9.11 MB of disk space was recovered from 2 RW2 sidecars (on average 4.56 MB per file).
-- 13.26 MB of disk space was recovered from 4 DNG sidecars (on average 4.42 MB per file).
+- 13.26 MB of disk space was recovered from 3 DNG sidecars (on average 4.42 MB per file).
+$
 ```
