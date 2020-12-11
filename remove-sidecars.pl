@@ -5,13 +5,31 @@ use warnings;
 use 5.16.0;
 use Data::Dumper qw(Dumper);
 
-my @jpegs = qw( JPG jpg JPEG jpeg );
-my @raws = qw( RW2 CR2 DNG ); # skipping lowercase dng because Pixel does HDR in jpeg only
-my $files_to_delete = ();
+my $files_to_delete = {};
+my @jpegs;
+my @raws;
+
+sub read_answer {
+    my $answer = <STDIN>;
+    chomp $answer;
+    return $answer;
+}
+
+sub define_extensions {
+    my $jpegs = 'JPG jpg JPEG jpeg';
+    my $raws  = 'RW2 CR2 DNG dng';
+
+    printf "Please specify a list of sidecar extensions [%s] ", $jpegs;
+    @jpegs = split(' ', read_answer || $jpegs);
+
+    printf "Please specify a list of raw photo extensions [%s] ", $raws;
+    @raws = split(' ', read_answer || $raws);
+}
 
 sub traverse_tree {
     my ($dir) = @_;
     opendir(my $dh, $dir) || die "Can't open $dir: $!";
+    printf "Scanning directory %s\n", $dir;
 
     my $files = {};
     while (readdir $dh) {
@@ -56,6 +74,49 @@ sub process_dir {
     }
 }
 
+sub prompt {
+    if (!%$files_to_delete) {
+        print "\nNo sidecars found\n";
+        exit;
+    }
+
+    print "\nFound sidecars of:\n";
+    for my $ext (@raws) {
+        next unless $files_to_delete->{$ext};
+        printf "- %d %s files\n", scalar @{ $files_to_delete->{$ext} }, $ext;
+    }
+    print "\nWould you like to delete them? [y/N] ";
+
+    exit unless lc(read_answer) eq "y";
+}
+
+sub delete_files {
+    my $total_size = 0;
+    my $ext_size;
+    for my $ext (@raws) {
+        for my $file (@{ $files_to_delete->{$ext} }) {
+            my $size = -s $file // 0;
+            printf "Deleting %s (%s), a sidecar of %s\n", $file, format_size($size), $ext;
+            $total_size += $size;
+            $ext_size->{$ext} += $size;
+            # unlink $file;
+        }
+    }
+    print_report($total_size, $ext_size);
+}
+
+sub print_report {
+    my ($total_size, $ext_size) = @_;
+
+    printf "\nIn total %s of disk space was recovered:\n", format_size($total_size);
+    printf "- %s of disk space was recovered from %d %s sidecars (on average %s per file).\n",
+        format_size($ext_size->{$_}),
+        scalar @{ $files_to_delete->{$_} },
+        $_,
+        format_size($ext_size->{$_} / @{ $files_to_delete->{$_} })
+        for keys %$ext_size;
+}
+
 sub format_size {
     my $size = shift;
     my $exp = 0;
@@ -71,28 +132,8 @@ sub format_size {
     return sprintf("%.2f %s", $size, $units->[$exp]);
 }
 
-my $root_dir = $ARGV[0] // '.';
-traverse_tree($root_dir);
+define_extensions;
+traverse_tree($ARGV[0] // '.');
+prompt;
+delete_files;
 
-# print Dumper($files_to_delete);
-
-my $total_size = 0;
-my %ext_size;
-for my $ext (@raws) {
-    for my $file (@{ $files_to_delete->{$ext} }) {
-        my $size = -s $file // 0;
-        printf "Deleting %s (%s), a sidecar of %s\n", $file, format_size($size), $ext;
-        $total_size += $size;
-        $ext_size{$ext} += $size;
-        unlink $file;
-    }
-    print "\n";
-}
-
-printf "In total %s of disk space was recovered.\n", format_size($total_size);
-printf "%s of disk space was recovered from %d %s sidecars (on average %s per file).\n",
-    format_size($ext_size{$_}),
-    scalar @{ $files_to_delete->{$_} },
-    $_,
-    format_size($ext_size{$_} / @{ $files_to_delete->{$_} })
-    for keys %ext_size;
