@@ -49,7 +49,7 @@ In total 22.37 MB of disk space was recovered:
 - 13.26 MB of disk space was recovered from 3 DNG sidecars (on average 4.42 MB per file).
 ```
 
-If you're one Windows, or for whatever reason can't make the script executable, you can also run it like this:
+If you're on Windows, or for whatever reason can't make the script executable, you can also run it like this:
 
 ```
 $ perl remove-sidecars.pl /path/to/my/photos
