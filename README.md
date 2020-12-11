@@ -12,6 +12,8 @@ had no feature to do that. So I decided to write a script for it. I ended up fre
 
 ### Usage
 
+Make sure you have [perl](https://www.perl.org/) installed.
+
 Download the script and make it executable. Run it with the path to your photos. You'll be prompted to provide
 a list of extensions for your sidecars and for your raw photos. Press enter to accept the defaults or provide a
 space-separated list of extensions. The script will then scan your photos, give a summary of the files it found,
@@ -44,4 +46,10 @@ Deleting /path/to/my/photos/2/IMG_171956.jpg (4.33 MB), a sidecar of DNG
 In total 22.37 MB of disk space was recovered:
 - 9.11 MB of disk space was recovered from 2 RW2 sidecars (on average 4.56 MB per file).
 - 13.26 MB of disk space was recovered from 3 DNG sidecars (on average 4.42 MB per file).
+```
+
+If you're one Windows, or for whatever reason can't make the script executable, you can also run it like this:
+
+```
+$ perl remove-sidecars.pl /path/to/my/photos
 ```

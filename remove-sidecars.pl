@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use Term::ANSIColor qw( :constants );
+use File::Spec;
 
 my $files_to_delete = {};
 my @units = qw( B KB MB GB TB PB );
@@ -45,7 +46,7 @@ sub traverse_tree {
         next if m/^\.+$/; # skip . and ..
 
         my $filename = $_;
-        my $path = "$dir/$filename";
+        my $path = File::Spec->catfile($dir, $filename);
 
         if (-d $path) {
             traverse_tree($path);
@@ -70,7 +71,7 @@ sub process_dir {
         for my $ext (@jpegs) {
             if ($extensions->{$ext}) {
                 delete $extensions->{$ext};
-                $file = "$dir/$name.$ext";
+                $file = File::Spec->catfile($dir, "$name.$ext");
                 last;
             }
         }
