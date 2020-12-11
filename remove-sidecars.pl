@@ -18,10 +18,10 @@ sub define_extensions {
     my $jpegs = 'JPG jpg JPEG jpeg';
     my $raws  = 'RW2 CR2 DNG dng';
 
-    printf "Please specify a list of sidecar extensions [%s] ", $jpegs;
+    printf "What extensions do your sidecars have? [%s] ", $jpegs;
     @jpegs = split(' ', read_answer || $jpegs);
 
-    printf "Please specify a list of raw photo extensions [%s] ", $raws;
+    printf "What extensions do your raw photos have? [%s] ", $raws;
     @raws = split(' ', read_answer || $raws);
 }
 
