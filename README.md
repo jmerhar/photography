@@ -44,5 +44,4 @@ Deleting /path/to/my/photos/2/IMG_171956.jpg (4.33 MB), a sidecar of DNG
 In total 22.37 MB of disk space was recovered:
 - 9.11 MB of disk space was recovered from 2 RW2 sidecars (on average 4.56 MB per file).
 - 13.26 MB of disk space was recovered from 3 DNG sidecars (on average 4.42 MB per file).
-$
 ```
