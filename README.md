@@ -12,14 +12,20 @@ has no feature to do that. So I decided to write a script for it. I ended up fre
 
 ### Usage
 
+Download the script and make it executable. Run it with the path to your photos. You'll be prompted to provide
+a list of extensions for your sidecars and your raw photos. Press enter to accept the defaults or provide a
+list of extensions separated by space. The script will then scan your photos, give a summary of the files it
+found, and prompt you to confirm deleting them. At the end you'll get a summary with the total disk space
+recovered.
+
 ```
 # After downloading, make the script executable
 $ chmod a+x remove-sidecars.pl
 
 # Run it with the path to your photos
 $ ./remove-sidecars.pl /path/to/my/photos
-Please specify a list of sidecar extensions [JPG jpg JPEG jpeg] JPG jpg
-Please specify a list of raw photo extensions [RW2 CR2 DNG dng] RW2 DNG
+What extensions do your sidecars have? [JPG jpg JPEG jpeg] JPG jpg
+What extensions do your raw photos have? [RW2 CR2 DNG dng] RW2 DNG
 Scanning directory /path/to/my/photos
 Scanning directory /path/to/my/photos/1
 Scanning directory /path/to/my/photos/2
