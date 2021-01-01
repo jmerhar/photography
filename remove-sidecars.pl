@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Term::ANSIColor qw( :constants );
 use File::Spec;
+use File::Basename;
 
 my $files_to_delete = {};
 my @units = qw( B KB MB GB TB PB );
@@ -11,6 +12,11 @@ my @jpegs;
 my @raws;
 
 $Term::ANSIColor::AUTORESET = 1;
+
+sub uniq {
+    my %seen;
+    grep !$seen{$_}++, @_;
+}
 
 sub read_answer {
     local $Term::ANSIColor::AUTORESET = 0;
@@ -95,10 +101,26 @@ sub prompt {
         next unless $files_to_delete->{$ext};
         print BOLD GREEN sprintf("- %d %s files\n", scalar @{ $files_to_delete->{$ext} }, $ext);
     }
-    print BOLD CYAN "\nWould you like to delete them? ";
-    print FAINT WHITE "[y/N] ";
 
-    exit unless lc(read_answer) eq "y";
+    my $answer = 's';
+    while ($answer eq 's') {
+        print BOLD CYAN "\nWould you like to (d)elete them, (s)ee a list of directories, or (q)uit? ";
+        print FAINT WHITE "[d/s/Q] ";
+
+        $answer = lc(read_answer);
+        print_directories() if $answer eq 's';
+    }
+    return $answer eq 'd';
+}
+
+sub print_directories {
+    for my $ext (@raws) {
+        next unless $files_to_delete->{$ext};
+        print BOLD GREEN sprintf("\nFound sidecars of %s files in the following directories:\n", $ext);
+        for my $dir (sort(uniq(map { dirname($_) } @{ $files_to_delete->{$ext} }))) {
+            print BOLD YELLOW sprintf("- %s\n", $dir);
+        }
+    }
 }
 
 sub delete_files {
@@ -143,6 +165,5 @@ sub format_size {
 
 define_extensions;
 traverse_tree($ARGV[0] // '.');
-prompt;
-delete_files;
+delete_files if prompt;
 
