@@ -117,8 +117,9 @@ sub print_directories {
     for my $ext (@raws) {
         next unless $files_to_delete->{$ext};
         print BOLD GREEN sprintf("\nFound sidecars of %s files in the following directories:\n", $ext);
-        for my $dir (sort(uniq(map { dirname($_) } @{ $files_to_delete->{$ext} }))) {
-            print BOLD YELLOW sprintf("- %s\n", $dir);
+        my $count = {};
+        for my $dir (sort(uniq(map { $count->{dirname($_)}++; dirname($_) } @{ $files_to_delete->{$ext} }))) {
+            print BOLD YELLOW sprintf("[%5d] %s\n", $count->{$dir}, $dir);
         }
     }
 }
