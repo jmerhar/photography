@@ -11,14 +11,12 @@ set -euo pipefail
 if [[ -t 1 ]]; then
   color_info=$(tput setaf 4)    # Blue for info messages
   color_debug=$(tput setaf 8)   # Grey for debug messages
-  color_warn=$(tput setaf 3)    # Yellow for warnings
   color_error=$(tput setaf 1)   # Red for errors
   color_reset=$(tput sgr0)
   text_bold=$(tput bold)        # Bold for emphasis
 else
   color_info=''
   color_debug=''
-  color_warn=''
   color_error=''
   color_reset=''
   text_bold=''
@@ -95,7 +93,6 @@ parse_options() {
     exit 1
   fi
 
-  # Set final destination
   DESTINATION="${HOST}:${DEST_PATH}"
 }
 
@@ -120,12 +117,12 @@ log_info() {
 #   $1 - Message to log
 #######################################
 log_error() {
-  local -r msg="$1"
+  local -r msg="ERROR: $1"
   printf "%s\n" "${msg}" >> "${LOG_FILE}"
   if [[ -t 2 ]]; then
-    printf "%b\n" "${color_error}${text_bold}ERROR: ${msg}${color_reset}" >&2
+    printf "%b\n" "${color_error}${text_bold}${msg}${color_reset}" >&2
   else
-    printf "%s\n" "ERROR: ${msg}" >&2
+    printf "%s\n" "${msg}" >&2
   fi
 }
 
@@ -135,33 +132,31 @@ log_error() {
 #   $1 - Message to log
 #######################################
 log_debug() {
-  local -r msg="$1"
-  printf "%s\n" "DEBUG: ${msg}" >> "${LOG_FILE}"
-  if [[ -t 1 ]] && [[ "${DEBUG_MODE}" == "true" ]]; then
-    printf "%b\n" "${color_debug}${msg}${color_reset}"
+  local -r msg="DEBUG: $1"
+  printf "%s\n" "${msg}" >> "${LOG_FILE}"
+
+  if [[ "${DEBUG_MODE}" == "true" ]]; then
+    if [[ -t 1 ]]; then
+      printf "%b\n" "${color_debug}${msg}${color_reset}"
+    else
+      printf "%s\n" "${msg}"
+    fi
   fi
 }
 
 #######################################
 # Log and execute a command.
 # Globals:
-#   LOG_FILE, DEBUG_MODE
+#   DEBUG_MODE
 # Arguments:
 #   $@ - Command to execute
 #######################################
 run_command() {
-  local -r cmd_str="$*"
+  local -r cmd=("$@")
+  local -r cmd_str="${cmd[*]}"
 
-  # Always log to file
-  printf "%s\n" "RUNNING: ${cmd_str}" >> "${LOG_FILE}"
-
-  # Conditionally show in stdout
-  if [[ "${DEBUG_MODE}" == "true" ]]; then
-    log_debug "Executing: ${cmd_str}"
-  fi
-
-  # Execute command and capture output
-  "$@" | tee -a "${LOG_FILE}"
+  log_debug "Running: ${cmd_str}"
+  "${cmd[@]}" | tee -a "${LOG_FILE}"
 }
 
 #######################################
@@ -173,12 +168,12 @@ verify_source_directory() {
   local -r dir="$1"
   
   if [[ ! -d "${dir}" ]]; then
-    log_error "Error: Source directory ${dir} not mounted"
+    log_error "Source directory ${dir} not mounted"
     exit 1
   fi
 
   if ! find "${dir}" -mindepth 1 -print -quit | grep -q .; then
-    log_error "Error: Source directory ${dir} appears empty!"
+    log_error "Source directory ${dir} appears empty!"
     exit 1
   fi
 }
@@ -225,7 +220,7 @@ generate_protection_filter() {
     local relative_path="${path#"${protect_src}/"}"
     printf "P /%s\n" "${relative_path}"
   done > "${filter_file}" || {
-    log_error "Error: Failed to generate filter rules for ${protect_src}"
+    log_error "Failed to generate filter rules for ${protect_src}"
     exit 1
   }
 }
@@ -272,9 +267,6 @@ perform_backup() {
     "${source_dir}/" "${DESTINATION}"
 }
 
-#######################################
-# Main execution
-#######################################
 main() {
   parse_options "$@"
 
