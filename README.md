@@ -1,5 +1,106 @@
 # Photography Scripts
 
+A collection of utilities for managing photography workflows. Currently includes:
+
+1. **remove-sidecars.pl** - Clean up unnecessary sidecar files
+2. **photo-backup.sh** - Intelligent merged backup solution for photo libraries
+
+---
+
+## photo-backup.sh
+
+A robust backup solution for photographers managing multiple storage devices. Safely merges content from two external disks with overlapping directory structures (e.g., both containing /Travel folders) into a consolidated backup on a Linux server while preserving unique files from both sources.
+
+**Key Features:**
+✅ Merge overlapping directory structures safely
+✅ Prevent accidental deletions through protection filters
+✅ Dry-run mode for testing changes
+✅ Debug logging for troubleshooting
+✅ Color-coded terminal output (automatic detection)
+✅ Smart cleanup of macOS temporary files
+✅ Customizable paths and host configuration
+✅ Comprehensive safety checks and validations
+
+### Installation
+
+```bash
+# Download the script
+curl -O https://raw.githubusercontent.com/jmerhar/photography/refs/heads/main/photo-backup.sh
+
+# Make executable
+chmod +x photo-backup.sh
+
+# Verify installation
+./photo-backup.sh -h
+```
+
+### Usage
+
+**Basic Command:**
+```bash
+./photo-backup.sh \
+  -1 /Volumes/PhotoStore \
+  -2 /Volumes/MorePhotos \
+  -H backup-server \
+  -p /mnt/storage/photos
+```
+
+**Common Options:**
+```
+-n            Dry-run mode (show what would happen)
+-d            Debug mode (show detailed command logging)
+-l path.log   Custom log file location
+-1 PATH       Primary source path
+-2 PATH       Secondary source path
+-H HOST       Backup server hostname
+-p PATH       Destination path on server
+```
+
+**Example Scenarios:**
+
+1. **Dry-run Test:**
+   ```bash
+   ./photo-backup.sh -n -d -l ~/backup-test.log
+   ```
+
+2. **Custom Configuration:**
+   ```bash
+   ./photo-backup.sh \
+     -1 /mnt/camera-roll \
+     -2 /mnt/archive \
+     -H nas.example.com \
+     -p /volume1/PhotoBackup \
+     -l /var/log/custom-backup.log
+   ```
+
+3. **Debug Mode:**
+   ```bash
+   ./photo-backup.sh -d 2>&1 | tee debug-output.log
+   ```
+
+**Sample Output:**
+```text
+==> BEGIN BACKUP OPERATION - Thu Jun 13 14:00:00 CEST 2024
+==> Source 1: /Volumes/PhotoStore
+==> Source 2: /Volumes/MorePhotos
+==> Destination: aurora:/mnt/storage/photos
+==> Cleaning temporary files...
+DEBUG: Running: find /Volumes/PhotoStore -name .DS_Store -delete -print
+DEBUG: Running: dot_clean -v /Volumes/PhotoStore
+==> Backing up /Volumes/PhotoStore to aurora
+sent 12.34G bytes  received 156.78k bytes  8.23M bytes/sec
+==> BACKUP COMPLETED SUCCESSFULLY - Thu Jun 13 16:30:00 CEST 2024
+```
+
+### Requirements
+
+- **Bash** 4.0+ (macOS/Linux)
+- **rsync** (for efficient file transfers)
+- **SSH access** to backup server
+- **dot_clean** (macOS - included by default)
+
+---
+
 ## remove-sidecars.pl
 
 I like to shoot with my camera in RAW+JPEG mode, in order to have high-quality raw photos, but also jpegs
