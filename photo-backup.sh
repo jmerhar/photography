@@ -167,7 +167,7 @@ generate_protection_filter() {
   local -r protect_src="$1"
   local -r filter_file="$2"
 
-  log_message "Generating protection rules for ${protect_src} in ${filter_file}"
+  log_message "Generating protection rules for ${protect_src}"
   find "${protect_src}" -mindepth 1 -print0 | while IFS= read -r -d '' path; do
     local relative_path="${path#"${protect_src}/"}"
     printf "P /%s\n" "${relative_path}"
@@ -229,6 +229,7 @@ main() {
   # Execute backup process
   {
     log_message "BEGIN $(date)"
+    log_message "Going to backup ${SRC_1} and ${SRC_2} to ${DESTINATION}"
 
     # Skip cleanups in dry-run mode
     if [[ -z "${DRY_RUN_FLAG}" ]]; then
