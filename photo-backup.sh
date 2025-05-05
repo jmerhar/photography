@@ -5,62 +5,79 @@
 
 set -euo pipefail
 
+########################################
+# Default Configuration (override with CLI options)
+########################################
 readonly LOG_FILE="/var/log/photo-backup.log"
-readonly SRC_1="/Volumes/PhotoStore"
-readonly SRC_2="/Volumes/MorePhotos"
 readonly TEMP_DIR="$(mktemp -d)"
-readonly HOST="aurora"
-readonly DEST_PATH="/mnt/storage/photos"
+readonly DEFAULT_SRC_1="/Volumes/PhotoStore"
+readonly DEFAULT_SRC_2="/Volumes/MorePhotos"
+readonly DEFAULT_HOST="aurora"
+readonly DEFAULT_DEST_PATH="/mnt/storage/photos"
 
-# Command line flags
-dry_run_flag=""
-
-# Initialize destination with proper hostname
-declare -r destination
-if ssh -q "${HOST}-local" exit; then
-  destination="${HOST}-local:${DEST_PATH}"
-else
-  destination="${HOST}:${DEST_PATH}"
-fi
+########################################
+# Runtime Configuration (set via CLI options)
+########################################
+SRC_1="${DEFAULT_SRC_1}"
+SRC_2="${DEFAULT_SRC_2}"
+HOST="${DEFAULT_HOST}"
+DEST_PATH="${DEFAULT_DEST_PATH}"
+DRY_RUN_FLAG=""
+DEBUG_MODE="false"
+DESTINATION=""  # Will be set in parse_options
 
 trap 'rm -rf "${TEMP_DIR}"' EXIT
-
-#######################################
-# Validate filter file existence and content
-# Arguments:
-#   $1 - Path to filter file
-#######################################
-validate_filter_file() {
-  local -r filter_file="$1"
-
-  if [[ ! -f "${filter_file}" ]]; then
-    log_message "FATAL: Filter file ${filter_file} not found" >&2
-    exit 1
-  fi
-
-  if [[ ! -s "${filter_file}" ]]; then
-    log_message "FATAL: Filter file ${filter_file} is empty" >&2
-    exit 1
-  fi
-}
 
 #######################################
 # Show usage information.
 #######################################
 show_usage() {
   cat <<EOF
-Usage: ${0##*/} [--dry-run]
+Usage: ${0##*/} [OPTIONS]
 Sync photos from two sources to backup server with protection rules.
 
 Options:
-  --dry-run    Show what would be transferred without making changes
-  --help       Show this help message
+  -1 PATH       Source 1 path (default: ${DEFAULT_SRC_1})
+  -2 PATH       Source 2 path (default: ${DEFAULT_SRC_2})
+  -H HOST       Backup server hostname (default: ${DEFAULT_HOST})
+  -p PATH       Destination path (default: ${DEFAULT_DEST_PATH})
+  -n            Dry-run mode
+  -d            Debug mode
+  -h            Show this help message
 
 Safety features:
-  - Verifies both source directories are mounted and non-empty
+  - Verifies source directories are mounted and non-empty
   - Validates protection filter file existence and content
   - Prevents accidental deletions through protection rules
 EOF
+}
+
+#######################################
+# Parse command line options
+#######################################
+parse_options() {
+  while getopts "1:2:H:p:ndh" opt; do
+    case "${opt}" in
+      1) SRC_1="${OPTARG}" ;;
+      2) SRC_2="${OPTARG}" ;;
+      H) HOST="${OPTARG}" ;;
+      p) DEST_PATH="${OPTARG}" ;;
+      n) DRY_RUN_FLAG="--dry-run" ;;
+      d) DEBUG_MODE="true" ;;
+      h) show_usage; exit 0 ;;
+      *) log_message "Error: Invalid option -${OPTARG}" >&2; show_usage; exit 1 ;;
+    esac
+  done
+  shift $((OPTIND -1))
+
+  if [[ $# -gt 0 ]]; then
+    log_message "Error: Unexpected arguments: $*" >&2
+    show_usage
+    exit 1
+  fi
+
+  # Set final destination
+  DESTINATION="${HOST}:${DEST_PATH}"
 }
 
 #######################################
@@ -95,12 +112,21 @@ verify_source_directory() {
 #######################################
 # Log and execute a command.
 # Globals:
-#   LOG_FILE
+#   LOG_FILE, DEBUG_MODE
 # Arguments:
 #   $@ - Command to execute
 #######################################
 run_command() {
-  printf "Running: %s\n" "$*" | tee -a "${LOG_FILE}"
+  local -r cmd_str="Running: $*"
+
+  # Log command to file (always) and stdout (only in debug mode)
+  if [[ "${DEBUG_MODE}" == "true" ]]; then
+    log_message "${cmd_str}"
+  else
+    printf "%s\n" "${cmd_str}" >> "${LOG_FILE}"
+  fi
+
+  # Execute command and capture output
   "$@" | tee -a "${LOG_FILE}"
 }
 
@@ -141,6 +167,7 @@ generate_protection_filter() {
   local -r protect_src="$1"
   local -r filter_file="$2"
 
+  log_message "Generating protection rules for ${protect_src} in ${filter_file}"
   find "${protect_src}" -mindepth 1 -print0 | while IFS= read -r -d '' path; do
     local relative_path="${path#"${protect_src}/"}"
     printf "P /%s\n" "${relative_path}"
@@ -148,6 +175,25 @@ generate_protection_filter() {
     log_message "Error: Failed to generate filter rules for ${protect_src}" >&2
     exit 1
   }
+}
+
+#######################################
+# Validate filter file existence and content
+# Arguments:
+#   $1 - Path to filter file
+#######################################
+validate_filter_file() {
+  local -r filter_file="$1"
+
+  if [[ ! -f "${filter_file}" ]]; then
+    log_message "FATAL: Filter file ${filter_file} not found" >&2
+    exit 1
+  fi
+
+  if [[ ! -s "${filter_file}" ]]; then
+    log_message "FATAL: Filter file ${filter_file} is empty" >&2
+    exit 1
+  fi
 }
 
 #######################################
@@ -161,7 +207,6 @@ perform_backup() {
   local -r protect_dir="$2"
   local -r filter_file="${TEMP_DIR}/filter.rules"
 
-  log_message "Generating protection rules for ${protect_dir} in ${filter_file}"
   generate_protection_filter "${protect_dir}" "${filter_file}"
   validate_filter_file "${filter_file}"
 
@@ -170,29 +215,12 @@ perform_backup() {
     --exclude '.*' \
     --filter="merge ${filter_file}" \
     --delete \
-    ${dry_run_flag} \
-    "${source_dir}/" "${destination}"
+    ${DRY_RUN_FLAG} \
+    "${source_dir}/" "${DESTINATION}"
 }
 
 main() {
-  # Parse command line arguments
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --dry-run)
-        dry_run_flag="--dry-run"
-        shift
-        ;;
-      --help)
-        show_usage
-        exit 0
-        ;;
-      *)
-        log_message "Error: Invalid option '$1'" >&2
-        show_usage
-        exit 1
-        ;;
-    esac
-  done
+  parse_options "$@"
 
   # Verify source directories
   verify_source_directory "${SRC_1}"
@@ -201,8 +229,13 @@ main() {
   # Execute backup process
   {
     log_message "BEGIN $(date)"
-    clean_directory "${SRC_1}"
-    clean_directory "${SRC_2}"
+
+    # Skip cleanups in dry-run mode
+    if [[ -z "${DRY_RUN_FLAG}" ]]; then
+      clean_directory "${SRC_1}"
+      clean_directory "${SRC_2}"
+    fi
+
     perform_backup "${SRC_1}" "${SRC_2}"
     perform_backup "${SRC_2}" "${SRC_1}"
     log_message "END $(date)"
