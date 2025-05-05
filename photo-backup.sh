@@ -9,15 +9,19 @@ set -euo pipefail
 # Color Setup (only when connected to terminal)
 ########################################
 if [[ -t 1 ]]; then
-  color_cyan=$(tput setaf 6)
-  color_grey=$(tput setaf 8)
-  color_red=$(tput setaf 1)
+  color_info=$(tput setaf 4)    # Blue for info messages
+  color_debug=$(tput setaf 8)   # Grey for debug messages
+  color_warn=$(tput setaf 3)    # Yellow for warnings
+  color_error=$(tput setaf 1)   # Red for errors
   color_reset=$(tput sgr0)
+  text_bold=$(tput bold)        # Bold for emphasis
 else
-  color_cyan=''
-  color_grey=''
-  color_red=''
+  color_info=''
+  color_debug=''
+  color_warn=''
+  color_error=''
   color_reset=''
+  text_bold=''
 fi
 
 ########################################
@@ -104,7 +108,9 @@ log_info() {
   local -r msg="$1"
   printf "%s\n" "${msg}" >> "${LOG_FILE}"
   if [[ -t 1 ]]; then
-    printf "%b\n" "${color_cyan}${msg}${color_reset}"
+    printf "%b\n" "${color_info}${text_bold}==> ${msg}${color_reset}"
+  else
+    printf "%s\n" "${msg}"
   fi
 }
 
@@ -117,10 +123,45 @@ log_error() {
   local -r msg="$1"
   printf "%s\n" "${msg}" >> "${LOG_FILE}"
   if [[ -t 2 ]]; then
-    printf "%b\n" "${color_red}${msg}${color_reset}" >&2
+    printf "%b\n" "${color_error}${text_bold}ERROR: ${msg}${color_reset}" >&2
   else
-    printf "%s\n" "${msg}" >&2
+    printf "%s\n" "ERROR: ${msg}" >&2
   fi
+}
+
+#######################################
+# Log a debug message
+# Arguments:
+#   $1 - Message to log
+#######################################
+log_debug() {
+  local -r msg="$1"
+  printf "%s\n" "DEBUG: ${msg}" >> "${LOG_FILE}"
+  if [[ -t 1 ]] && [[ "${DEBUG_MODE}" == "true" ]]; then
+    printf "%b\n" "${color_debug}${msg}${color_reset}"
+  fi
+}
+
+#######################################
+# Log and execute a command.
+# Globals:
+#   LOG_FILE, DEBUG_MODE
+# Arguments:
+#   $@ - Command to execute
+#######################################
+run_command() {
+  local -r cmd_str="$*"
+
+  # Always log to file
+  printf "%s\n" "RUNNING: ${cmd_str}" >> "${LOG_FILE}"
+
+  # Conditionally show in stdout
+  if [[ "${DEBUG_MODE}" == "true" ]]; then
+    log_debug "Executing: ${cmd_str}"
+  fi
+
+  # Execute command and capture output
+  "$@" | tee -a "${LOG_FILE}"
 }
 
 #######################################
@@ -140,32 +181,6 @@ verify_source_directory() {
     log_error "Error: Source directory ${dir} appears empty!"
     exit 1
   fi
-}
-
-#######################################
-# Log and execute a command.
-# Globals:
-#   LOG_FILE, DEBUG_MODE
-# Arguments:
-#   $@ - Command to execute
-#######################################
-run_command() {
-  local -r cmd_str="Running: $*"
-
-  # Always log to file
-  printf "%s\n" "${cmd_str}" >> "${LOG_FILE}"
-
-  # Conditionally show in stdout
-  if [[ "${DEBUG_MODE}" == "true" ]]; then
-    if [[ -t 1 ]]; then
-      printf "%b\n" "${color_grey}${cmd_str}${color_reset}"
-    else
-      printf "%s\n" "${cmd_str}"
-    fi
-  fi
-
-  # Execute command and capture output
-  "$@" | tee -a "${LOG_FILE}"
 }
 
 #######################################
@@ -257,6 +272,9 @@ perform_backup() {
     "${source_dir}/" "${DESTINATION}"
 }
 
+#######################################
+# Main execution
+#######################################
 main() {
   parse_options "$@"
 
@@ -266,18 +284,23 @@ main() {
 
   # Execute backup process
   {
-    log_info "BEGIN $(date)"
-    log_info "Going to backup ${SRC_1} and ${SRC_2} to ${DESTINATION}"
+    log_info "BEGIN BACKUP OPERATION - $(date)"
+    log_info "Source 1: ${SRC_1}"
+    log_info "Source 2: ${SRC_2}"
+    log_info "Destination: ${DESTINATION}"
 
     # Skip cleanups in dry-run mode
     if [[ -z "${DRY_RUN_FLAG}" ]]; then
+      log_info "Cleaning temporary files..."
       clean_directory "${SRC_1}"
       clean_directory "${SRC_2}"
     fi
 
+    log_info "Starting backup operations..."
     perform_backup "${SRC_1}" "${SRC_2}"
     perform_backup "${SRC_2}" "${SRC_1}"
-    log_info "END $(date)"
+
+    log_info "${text_bold}BACKUP COMPLETED SUCCESSFULLY - $(date)${color_reset}"
   }
 }
 
