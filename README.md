@@ -12,14 +12,14 @@ A collection of utilities for managing photography workflows. Currently includes
 A robust backup solution for photographers managing multiple storage devices. Safely merges content from two external disks with overlapping directory structures (e.g., both containing /Travel folders) into a consolidated backup on a Linux server while preserving unique files from both sources.
 
 **Key Features:**
-✅ Merge overlapping directory structures safely
-✅ Prevent accidental deletions through protection filters
-✅ Dry-run mode for testing changes
-✅ Debug logging for troubleshooting
-✅ Color-coded terminal output (automatic detection)
-✅ Smart cleanup of macOS temporary files
-✅ Customizable paths and host configuration
-✅ Comprehensive safety checks and validations
+- Merge overlapping directory structures safely
+- Prevent accidental deletions through protection filters
+- Dry-run mode for testing changes
+- Debug logging for troubleshooting
+- Color-coded terminal output
+- Smart cleanup of macOS temporary files
+- Customizable paths and host configuration
+- Comprehensive safety checks and validations
 
 ### Installation
 
