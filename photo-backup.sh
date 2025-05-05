@@ -145,7 +145,7 @@ log_debug() {
 }
 
 #######################################
-# Log and execute a command.
+# Log and execute a command with full output capture
 # Globals:
 #   DEBUG_MODE
 # Arguments:
@@ -156,7 +156,8 @@ run_command() {
   local -r cmd_str="${cmd[*]}"
 
   log_debug "Running: ${cmd_str}"
-  "${cmd[@]}" | tee -a "${LOG_FILE}"
+  # Capture both stdout and stderr
+  "${cmd[@]}" 2>&1 | tee -a "${LOG_FILE}"
 }
 
 #######################################
@@ -216,13 +217,13 @@ generate_protection_filter() {
   local -r filter_file="$2"
 
   log_info "Generating protection rules for ${protect_src}"
-  find "${protect_src}" -mindepth 1 -print0 | while IFS= read -r -d '' path; do
-    local relative_path="${path#"${protect_src}/"}"
-    printf "P /%s\n" "${relative_path}"
-  done > "${filter_file}" || {
-    log_error "Failed to generate filter rules for ${protect_src}"
-    exit 1
-  }
+  run_command sh -c '
+    set -eo pipefail
+    find "$1" -mindepth 1 -print0 | while IFS= read -r -d "" path; do
+      relative_path="${path#"$1/"}";
+      printf "P /%s\\n" "${relative_path}";
+    done > "$2" || exit 1
+  ' _ "${protect_src}" "${filter_file}"
 }
 
 #######################################
