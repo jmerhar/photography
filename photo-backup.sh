@@ -6,6 +6,21 @@
 set -euo pipefail
 
 ########################################
+# Color Setup (only when connected to terminal)
+########################################
+if [[ -t 1 ]]; then
+  color_cyan=$(tput setaf 6)
+  color_grey=$(tput setaf 8)
+  color_red=$(tput setaf 1)
+  color_reset=$(tput sgr0)
+else
+  color_cyan=''
+  color_grey=''
+  color_red=''
+  color_reset=''
+fi
+
+########################################
 # Default Configuration (override with CLI options)
 ########################################
 readonly LOG_FILE="/var/log/photo-backup.log"
@@ -65,13 +80,13 @@ parse_options() {
       n) DRY_RUN_FLAG="--dry-run" ;;
       d) DEBUG_MODE="true" ;;
       h) show_usage; exit 0 ;;
-      *) log_message "Error: Invalid option -${OPTARG}" >&2; show_usage; exit 1 ;;
+      *) log_error "Invalid option -${OPTARG}"; show_usage; exit 1 ;;
     esac
   done
   shift $((OPTIND -1))
 
   if [[ $# -gt 0 ]]; then
-    log_message "Error: Unexpected arguments: $*" >&2
+    log_error "Unexpected arguments: $*"
     show_usage
     exit 1
   fi
@@ -81,13 +96,31 @@ parse_options() {
 }
 
 #######################################
-# Log a message to stdout and log file.
+# Log an informational message
 # Arguments:
 #   $1 - Message to log
 #######################################
-log_message() {
+log_info() {
   local -r msg="$1"
-  printf "%s\n" "${msg}" | tee -a "${LOG_FILE}"
+  printf "%s\n" "${msg}" >> "${LOG_FILE}"
+  if [[ -t 1 ]]; then
+    printf "%b\n" "${color_cyan}${msg}${color_reset}"
+  fi
+}
+
+#######################################
+# Log an error message
+# Arguments:
+#   $1 - Message to log
+#######################################
+log_error() {
+  local -r msg="$1"
+  printf "%s\n" "${msg}" >> "${LOG_FILE}"
+  if [[ -t 2 ]]; then
+    printf "%b\n" "${color_red}${msg}${color_reset}" >&2
+  else
+    printf "%s\n" "${msg}" >&2
+  fi
 }
 
 #######################################
@@ -99,12 +132,12 @@ verify_source_directory() {
   local -r dir="$1"
   
   if [[ ! -d "${dir}" ]]; then
-    log_message "Error: Source directory ${dir} not mounted" >&2
+    log_error "Error: Source directory ${dir} not mounted"
     exit 1
   fi
 
   if ! find "${dir}" -mindepth 1 -print -quit | grep -q .; then
-    log_message "Error: Source directory ${dir} appears empty!" >&2
+    log_error "Error: Source directory ${dir} appears empty!"
     exit 1
   fi
 }
@@ -119,11 +152,16 @@ verify_source_directory() {
 run_command() {
   local -r cmd_str="Running: $*"
 
-  # Log command to file (always) and stdout (only in debug mode)
+  # Always log to file
+  printf "%s\n" "${cmd_str}" >> "${LOG_FILE}"
+
+  # Conditionally show in stdout
   if [[ "${DEBUG_MODE}" == "true" ]]; then
-    log_message "${cmd_str}"
-  else
-    printf "%s\n" "${cmd_str}" >> "${LOG_FILE}"
+    if [[ -t 1 ]]; then
+      printf "%b\n" "${color_grey}${cmd_str}${color_reset}"
+    else
+      printf "%s\n" "${cmd_str}"
+    fi
   fi
 
   # Execute command and capture output
@@ -140,7 +178,7 @@ remove_files() {
   local -r dir="$1"
   local -r pattern="$2"
 
-  log_message "Deleting ${pattern} files from ${dir}"
+  log_info "Deleting ${pattern} files from ${dir}"
   run_command find "${dir}" -name "${pattern}" -delete -print
 }
 
@@ -167,12 +205,12 @@ generate_protection_filter() {
   local -r protect_src="$1"
   local -r filter_file="$2"
 
-  log_message "Generating protection rules for ${protect_src}"
+  log_info "Generating protection rules for ${protect_src}"
   find "${protect_src}" -mindepth 1 -print0 | while IFS= read -r -d '' path; do
     local relative_path="${path#"${protect_src}/"}"
     printf "P /%s\n" "${relative_path}"
   done > "${filter_file}" || {
-    log_message "Error: Failed to generate filter rules for ${protect_src}" >&2
+    log_error "Error: Failed to generate filter rules for ${protect_src}"
     exit 1
   }
 }
@@ -186,12 +224,12 @@ validate_filter_file() {
   local -r filter_file="$1"
 
   if [[ ! -f "${filter_file}" ]]; then
-    log_message "FATAL: Filter file ${filter_file} not found" >&2
+    log_error "FATAL: Filter file ${filter_file} not found"
     exit 1
   fi
 
   if [[ ! -s "${filter_file}" ]]; then
-    log_message "FATAL: Filter file ${filter_file} is empty" >&2
+    log_error "FATAL: Filter file ${filter_file} is empty"
     exit 1
   fi
 }
@@ -210,7 +248,7 @@ perform_backup() {
   generate_protection_filter "${protect_dir}" "${filter_file}"
   validate_filter_file "${filter_file}"
 
-  log_message "Backing up ${source_dir} to ${HOST}"
+  log_info "Backing up ${source_dir} to ${HOST}"
   run_command rsync -aHv --progress \
     --exclude '.*' \
     --filter="merge ${filter_file}" \
@@ -228,8 +266,8 @@ main() {
 
   # Execute backup process
   {
-    log_message "BEGIN $(date)"
-    log_message "Going to backup ${SRC_1} and ${SRC_2} to ${DESTINATION}"
+    log_info "BEGIN $(date)"
+    log_info "Going to backup ${SRC_1} and ${SRC_2} to ${DESTINATION}"
 
     # Skip cleanups in dry-run mode
     if [[ -z "${DRY_RUN_FLAG}" ]]; then
@@ -239,7 +277,7 @@ main() {
 
     perform_backup "${SRC_1}" "${SRC_2}"
     perform_backup "${SRC_2}" "${SRC_1}"
-    log_message "END $(date)"
+    log_info "END $(date)"
   }
 }
 
