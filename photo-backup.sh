@@ -25,12 +25,12 @@ fi
 ########################################
 # Default Configuration (override with CLI options)
 ########################################
-readonly LOG_FILE="/var/log/photo-backup.log"
 readonly TEMP_DIR="$(mktemp -d)"
 readonly DEFAULT_SRC_1="/Volumes/PhotoStore"
 readonly DEFAULT_SRC_2="/Volumes/MorePhotos"
 readonly DEFAULT_HOST="aurora"
 readonly DEFAULT_DEST_PATH="/mnt/storage/photos"
+readonly DEFAULT_LOG_FILE="/var/log/photo-backup.log"
 
 ########################################
 # Runtime Configuration (set via CLI options)
@@ -39,9 +39,10 @@ SRC_1="${DEFAULT_SRC_1}"
 SRC_2="${DEFAULT_SRC_2}"
 HOST="${DEFAULT_HOST}"
 DEST_PATH="${DEFAULT_DEST_PATH}"
+LOG_FILE="${DEFAULT_LOG_FILE}"
 DRY_RUN_FLAG=""
 DEBUG_MODE="false"
-DESTINATION=""  # Will be set in parse_options
+DESTINATION="" # Will be set in parse_options
 
 trap 'rm -rf "${TEMP_DIR}"' EXIT
 
@@ -58,6 +59,7 @@ Options:
   -2 PATH       Source 2 path (default: ${DEFAULT_SRC_2})
   -H HOST       Backup server hostname (default: ${DEFAULT_HOST})
   -p PATH       Destination path (default: ${DEFAULT_DEST_PATH})
+  -l FILE       Log file path (default: ${DEFAULT_LOG_FILE})
   -n            Dry-run mode
   -d            Debug mode
   -h            Show this help message
@@ -73,12 +75,13 @@ EOF
 # Parse command line options
 #######################################
 parse_options() {
-  while getopts "1:2:H:p:ndh" opt; do
+  while getopts "1:2:H:p:l:ndh" opt; do
     case "${opt}" in
       1) SRC_1="${OPTARG}" ;;
       2) SRC_2="${OPTARG}" ;;
       H) HOST="${OPTARG}" ;;
       p) DEST_PATH="${OPTARG}" ;;
+      l) LOG_FILE="${OPTARG}" ;;
       n) DRY_RUN_FLAG="--dry-run" ;;
       d) DEBUG_MODE="true" ;;
       h) show_usage; exit 0 ;;
@@ -94,6 +97,12 @@ parse_options() {
   fi
 
   DESTINATION="${HOST}:${DEST_PATH}"
+
+  # Ensure log file directory exists
+  mkdir -p "$(dirname "${LOG_FILE}")" || {
+    printf "%s\n" "Failed to create log directory" >&2
+    exit 1
+  }
 }
 
 #######################################
@@ -278,6 +287,7 @@ main() {
   # Execute backup process
   {
     log_info "BEGIN BACKUP OPERATION - $(date)"
+    log_info "Log file: ${LOG_FILE}"
     log_info "Source 1: ${SRC_1}"
     log_info "Source 2: ${SRC_2}"
     log_info "Destination: ${DESTINATION}"
